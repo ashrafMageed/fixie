@@ -22,6 +22,7 @@ namespace Fixie.VisualStudio
             
             sources.ToList().ForEach(source =>
             {
+                logger.SendMessage(TestMessageLevel.Error, source);
                 var assembly = Assembly.Load(AssemblyName.GetAssemblyName(source));
                 var conventions = GetConventions(new RunContext(assembly, Enumerable.Empty<string>().ToLookup(x => x, x => x)));
                 conventions.ToList().ForEach(convention =>
@@ -31,7 +32,16 @@ namespace Fixie.VisualStudio
                         var methods = convention.Methods.Filter(testClass);
 
                         var cases = methods.Select(m => new Case(testClass, m)).ToList();
-                        cases.ForEach(testCase => discoverySink.SendTestCase(new TestCase(testCase.Name, new Uri(Constants.EXECUTOR_URI_STRING), source)));
+                        cases.ForEach(testCase =>
+                        {
+                            logger.SendMessage(TestMessageLevel.Error, testCase.Method.DeclaringType.ToString());
+                            discoverySink.SendTestCase(new TestCase(testCase.Name, new Uri(Constants.EXECUTOR_URI_STRING), source)
+                            {
+                                DisplayName = GetDislpayName(testCase.Name),
+                                CodeFilePath = testCase.Method.DeclaringType.ToString(),
+                                LocalExtensionData = testCase.Method.DeclaringType.ToString()
+                            });
+                        });
                     }
                 });
 
@@ -39,7 +49,11 @@ namespace Fixie.VisualStudio
         }
 
         
-
+        static string GetDislpayName(string fullyQualifiedName)
+        {
+            var lastPeriodInTestName = fullyQualifiedName.LastIndexOf('.');
+            return fullyQualifiedName.Substring(lastPeriodInTestName + 1).Replace(".", "");
+        }
         static Convention[] GetConventions(RunContext runContext)
         {
             var customConventions = runContext.Assembly
