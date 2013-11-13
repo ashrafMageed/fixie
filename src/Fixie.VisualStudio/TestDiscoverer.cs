@@ -16,15 +16,12 @@ namespace Fixie.VisualStudio
     {
         public void DiscoverTests(IEnumerable<string> sources, IDiscoveryContext discoveryContext, IMessageLogger logger, ITestCaseDiscoverySink discoverySink)
         {
-            // create test cases from source {where source are assemblies... supposedly}
-            // do nothing for now => just forward assemblies to the executor
-            //sources.Where(source => source.Contains("Tests")).ToList().ForEach(source => discoverySink.SendTestCase(new TestCase(source, new Uri(Constants.EXECUTOR_URI_STRING), source)));
-            
             sources.ToList().ForEach(source =>
             {
                 logger.SendMessage(TestMessageLevel.Error, source);
                 var assembly = Assembly.Load(AssemblyName.GetAssemblyName(source));
                 var conventions = GetConventions(new RunContext(assembly, Enumerable.Empty<string>().ToLookup(x => x, x => x)));
+
                 conventions.ToList().ForEach(convention =>
                 {
                     foreach (var testClass in convention.Classes.Filter(assembly.GetTypes()))
@@ -54,6 +51,10 @@ namespace Fixie.VisualStudio
             var lastPeriodInTestName = fullyQualifiedName.LastIndexOf('.');
             return fullyQualifiedName.Substring(lastPeriodInTestName + 1).Replace(".", "");
         }
+
+        // Don't repeat this.... 
+        // Maybe refactor the code to expose these as a separate class (ConventionDiscovery)
+        // which can be reused here??
         static Convention[] GetConventions(RunContext runContext)
         {
             var customConventions = runContext.Assembly
