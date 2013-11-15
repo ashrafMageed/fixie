@@ -18,6 +18,9 @@ namespace Fixie.VisualStudio
 
         public void RunTests(IEnumerable<string> sources, IRunContext runContext, IFrameworkHandle frameworkHandle)
         {
+            if(runContext.KeepAlive)
+                frameworkHandle.EnableShutdownAfterTestRun = true;
+            
             foreach(var source in sources)
             {
                 if (_cancelled)
@@ -32,16 +35,25 @@ namespace Fixie.VisualStudio
 
         public void RunTests(IEnumerable<TestCase> tests, IRunContext runContext, IFrameworkHandle frameworkHandle)
         {
-            var listener = new VisualStudioTestListener(frameworkHandle, tests.First().Source);
-            var runner = new Runner(listener);
-            foreach (var test in tests.ToList())
-            {
-                if (_cancelled)
-                    break;
+            if(runContext.KeepAlive)
+                frameworkHandle.EnableShutdownAfterTestRun = true;
 
-                var assembly = Assembly.Load(AssemblyName.GetAssemblyName(@test.Source));
-                var methodInfo = GetMethodInfoFromMethodName(assembly, test.FullyQualifiedName);
-                runner.RunMethod(assembly, methodInfo);
+            var testCaseGroupedBySource = tests.ToList().GroupBy(test => test.Source);
+
+            foreach (var groupedTestCases in testCaseGroupedBySource)
+            {
+                var listener = new VisualStudioTestListener(frameworkHandle, groupedTestCases.Key);
+                var runner = new Runner(listener);
+                foreach (var test in groupedTestCases)
+                {
+                    if (_cancelled)
+                        break;
+
+                    var assembly = Assembly.Load(AssemblyName.GetAssemblyName(@test.Source));
+                    var methodInfo = GetMethodInfoFromMethodName(assembly, test.FullyQualifiedName);
+
+                    runner.RunMethod(assembly, methodInfo);
+                }
             }
         }
 

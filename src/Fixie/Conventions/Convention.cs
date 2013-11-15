@@ -31,6 +31,17 @@ namespace Fixie.Conventions
             methodCallParameterBuilder = getCaseParameters;
         }
 
+        public IEnumerable<Case> GetTestCases(params Type[] candidateTypes)
+        {
+            var cases = new List<Case>();
+            foreach (var testClass in Classes.Filter(candidateTypes))
+            {
+                var methods = Methods.Filter(testClass);
+                cases.AddRange(methods.SelectMany(method => CasesForMethod(testClass, method)));
+            }
+            return cases;
+        }
+
         public void Execute(Listener listener, params Type[] candidateTypes)
         {
             foreach (var testClass in Classes.Filter(candidateTypes))

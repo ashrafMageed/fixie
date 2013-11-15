@@ -63,6 +63,17 @@ namespace Fixie
             return Run(runContext, conventions, type);
         }
 
+        public IEnumerable<Case> GetTestCases(Assembly assembly)
+        {
+            var runContext = new RunContext(assembly, options);
+            var conventions = GetConventions(runContext);
+            var testCases = new List<Case>();
+            foreach (var convention in conventions)
+                testCases.AddRange(convention.GetTestCases(assembly.GetTypes()));
+
+            return testCases;
+        }
+
         private AssemblyResult RunTypes(RunContext runContext, params Type[] types)
         {
             return Run(runContext, GetConventions(runContext), types);

@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using Microsoft.VisualStudio.TestPlatform.ObjectModel;
 using Microsoft.VisualStudio.TestPlatform.ObjectModel.Adapter;
@@ -34,9 +36,23 @@ namespace Fixie.VisualStudio
         {
             var testCase = new TestCase(result.Case.Name, new Uri(Constants.EXECUTOR_URI_STRING), source);
             frameworkHandle.RecordStart(testCase);
-            var testResult = new TestResult(testCase) { Outcome = TestOutcome.Failed, ErrorMessage = result.Case.Exceptions.Last().Message, ErrorStackTrace = result.Case.Exceptions.Last().StackTrace};
+            var testResult = new TestResult(testCase)
+            {
+                Outcome = TestOutcome.Failed,
+                ErrorMessage = result.Exceptions.First().GetType().FullName,
+                ErrorStackTrace = CompoundStackTrace(result.Exceptions)
+            };
             frameworkHandle.RecordEnd(testCase, TestOutcome.Failed);
             frameworkHandle.RecordResult(testResult);
+        }
+
+        static string CompoundStackTrace(IEnumerable<Exception> exceptions)
+        {
+            using (var writer = new StringWriter())
+            {
+                writer.WriteCompoundStackTrace(exceptions);
+                return writer.ToString();
+            }
         }
 
         public void AssemblyCompleted(System.Reflection.Assembly assembly, AssemblyResult result)

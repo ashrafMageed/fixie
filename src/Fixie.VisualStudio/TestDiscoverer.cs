@@ -20,68 +20,24 @@ namespace Fixie.VisualStudio
             {
                 logger.SendMessage(TestMessageLevel.Error, source);
                 var assembly = Assembly.Load(AssemblyName.GetAssemblyName(source));
-                var conventions = GetConventions(new RunContext(assembly, Enumerable.Empty<string>().ToLookup(x => x, x => x)));
-
-                conventions.ToList().ForEach(convention =>
+                var runner = new Runner(new VisualStudioTestListener(null, source));
+                var testCases = runner.GetTestCases(assembly);
+                foreach (var testCase in testCases)
                 {
-                    foreach (var testClass in convention.Classes.Filter(assembly.GetTypes()))
+                    logger.SendMessage(TestMessageLevel.Error, testCase.Name);
+                    discoverySink.SendTestCase(new TestCase(testCase.Name, new Uri(Constants.EXECUTOR_URI_STRING), source)
                     {
-                        var methods = convention.Methods.Filter(testClass);
-
-                        var cases = methods.Select(m => new Case(testClass, m)).ToList();
-                        cases.ForEach(testCase =>
-                        {
-                            logger.SendMessage(TestMessageLevel.Error, testCase.Method.DeclaringType.ToString());
-                            discoverySink.SendTestCase(new TestCase(testCase.Name, new Uri(Constants.EXECUTOR_URI_STRING), source)
-                            {
-                                DisplayName = GetDislpayName(testCase.Name),
-                                CodeFilePath = testCase.Method.DeclaringType.ToString(),
-                                LocalExtensionData = testCase.Method.DeclaringType.ToString()
-                            });
-                        });
-                    }
-                });
+                        DisplayName = GetDislpayName(testCase.Name)
+                    });
+                }
 
             });
         }
 
-        
         static string GetDislpayName(string fullyQualifiedName)
         {
             var lastPeriodInTestName = fullyQualifiedName.LastIndexOf('.');
             return fullyQualifiedName.Substring(lastPeriodInTestName + 1).Replace(".", "");
-        }
-
-        // Don't repeat this.... 
-        // Maybe refactor the code to expose these as a separate class (ConventionDiscovery)
-        // which can be reused here??
-        static Convention[] GetConventions(RunContext runContext)
-        {
-            var customConventions = runContext.Assembly
-                .GetTypes()
-                .Where(t => t.IsSubclassOf(typeof(Convention)))
-                .Select(t => ConstructConvention(t, runContext))
-                .ToArray();
-
-            if (customConventions.Any())
-                return customConventions;
-
-            return new[] { (Convention)new DefaultConvention() };
-        }
-
-        static Convention ConstructConvention(Type conventionType, RunContext runContext)
-        {
-            var constructors = conventionType.GetConstructors();
-
-            if (constructors.Length == 1)
-            {
-                var parameters = constructors.Single().GetParameters();
-
-                if (parameters.Length == 1 && parameters.Single().ParameterType == typeof(RunContext))
-                    return (Convention)Activator.CreateInstance(conventionType, runContext);
-            }
-
-            return (Convention)Activator.CreateInstance(conventionType);
         }
     }
 }
