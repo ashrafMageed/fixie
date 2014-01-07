@@ -59,5 +59,13 @@ namespace Fixie.VisualStudio
         {
             
         }
+
+
+        public void CaseSkipped(Case @case)
+        {
+            var testCase = new TestCase(@case.Name, new Uri(Constants.EXECUTOR_URI_STRING), source);
+            var testResult = new TestResult(testCase){Outcome = TestOutcome.Skipped};
+            frameworkHandle.RecordResult(testResult);
+        }
     }
 }
